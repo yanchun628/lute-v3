@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+
+{% block title %}Import / Export data{% endblock %}
+
+{% block header %}Import / Export data{% endblock %}
+
+{% block body %}
+
+<p>
+  Move all of your Lute data (database, images, audio, themes) between
+  Lute installs, e.g. between the Docker version and the Windows version.
+  The zip uses the same folder layout as a Docker setup
+  (<code>data/lute.db</code>, <code>data/userimages/</code>, ...).
+</p>
+<p>Current data folder: <code>{{ datapath }}</code></p>
+
+{% if pending %}
+<div id="pending_import" style="border: 1px solid #c90; padding: 10px; margin: 15px 0;">
+  <h3>Import ready</h3>
+  <p>
+    <b>{{ pending.source }}</b> (staged {{ pending.staged_at }}):
+    {{ pending.languages }} languages, {{ pending.books }} books, {{ pending.terms }} terms.
+  </p>
+  <p>
+    It will <b>replace</b> your current data when Lute restarts.
+    Your current data is kept in the <code>.system_db_backups</code> folder.
+  </p>
+  {% if can_restart %}
+  <form method="POST" action="{{ url_for('datatransfer.restart') }}" style="display: inline;">
+    <input type="submit" id="btn_restart" value="Restart Lute and import now" />
+  </form>
+  {% else %}
+  <p><b>Stop and start Lute again to finish the import.</b></p>
+  {% endif %}
+  <form method="POST" action="{{ url_for('datatransfer.cancel') }}" style="display: inline;">
+    <input type="submit" id="btn_cancel_import" value="Cancel import" />
+  </form>
+</div>
+{% endif %}
+
+<h2>Export</h2>
+<p>
+  Download a zip of all your data.  To use it with Docker: stop the
+  container, replace your Docker <code>data</code> folder with the
+  <code>data</code> folder from the zip, and start the container again.
+  The zip also contains a sample <code>docker-compose.yml</code>.
+</p>
+<p><a id="btn_export" href="{{ url_for('datatransfer.export') }}">Download data export (.zip)</a></p>
+
+<h2>Import</h2>
+<p>
+  Choose a zip of a Lute data folder: an export from this page, or a zip
+  of your Docker folder (the folder holding <code>docker-compose.yml</code>
+  and <code>data</code>).
+</p>
+<p><b>Importing replaces all of your current data.</b></p>
+<form method="POST" action="{{ url_for('datatransfer.import_data') }}" enctype="multipart/form-data">
+  <input type="file" name="datafile" id="datafile" accept=".zip" />
+  <input type="submit" id="btn_import" value="Upload and check" />
+</form>
+
+{% endblock %}

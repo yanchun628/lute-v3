@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+
+{% block title %}Restarting{% endblock %}
+
+{% block header %}Restarting Lute ...{% endblock %}
+
+{% block body %}
+<p id="restart_status">Lute is restarting and importing your data.  This page will reload when it's ready.</p>
+
+<script>
+  (function() {
+    var started = Date.now();
+    function poll() {
+      fetch("/", { cache: "no-store" })
+        .then(function(r) {
+          if (r.ok && Date.now() - started > 3000) { window.location = "/"; }
+          else { setTimeout(poll, 1000); }
+        })
+        .catch(function() { setTimeout(poll, 1000); });
+    }
+    setTimeout(poll, 3000);
+  })();
+</script>
+{% endblock %}

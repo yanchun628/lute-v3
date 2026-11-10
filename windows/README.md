@@ -32,6 +32,19 @@ with two copies running.
 
 Uninstalling never deletes your data.
 
+**Switching between Docker and Windows**: use *Settings > Import / Export data*.
+
+* **Docker to Windows**: zip your Docker folder (the one holding
+  `docker-compose.yml` and `data`), choose *Upload and check*, then click
+  *Restart Lute and import now*. Your current Windows data is moved to
+  `data\.system_db_backups\before_import_<time>\` first.
+* **Windows to Docker**: click *Download data export (.zip)*. Stop the
+  container, replace your Docker `data` folder with the `data` folder from
+  the zip, and start the container again.
+
+An import replaces everything; it doesn't merge. Always export from the
+side you used last.
+
 **Languages**: every space-delimited language works out of the box, and so
 do Japanese (MeCab and the ipadic dictionary are bundled), Turkish and
 Classical Chinese.

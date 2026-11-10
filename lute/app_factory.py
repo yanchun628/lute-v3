@@ -28,6 +28,7 @@ from lute.db import db
 from lute.db.setup.main import setup_db
 from lute.db.management import add_default_user_settings
 from lute.db.data_cleanup import clean_data
+from lute.datatransfer.service import apply_pending_import
 from lute.backup.service import Service as BackupService
 from lute.db.demo import Service as DemoService
 import lute.utils.formutils
@@ -57,6 +58,7 @@ from lute.userimage.routes import bp as userimage_bp
 from lute.useraudio.routes import bp as useraudio_bp
 from lute.termimport.routes import bp as termimport_bp
 from lute.backup.routes import bp as backup_bp
+from lute.datatransfer.routes import bp as datatransfer_bp
 from lute.dev_api.routes import bp as dev_api_bp
 from lute.settings.routes import bp as settings_bp
 from lute.themes.routes import bp as themes_bp
@@ -345,6 +347,7 @@ def _create_app(app_config, extra_config):
     app.register_blueprint(useraudio_bp)
     app.register_blueprint(termimport_bp)
     app.register_blueprint(backup_bp)
+    app.register_blueprint(datatransfer_bp)
     app.register_blueprint(settings_bp)
     app.register_blueprint(themes_bp)
     app.register_blueprint(stats_bp)
@@ -410,6 +413,13 @@ def create_app(
             app_config_path = AppConfig.default_config_filename()
 
     app_config = AppConfig(app_config_path)
+    # A data import staged by the user is swapped in before the db is opened.
+    apply_pending_import(
+        app_config.datapath,
+        app_config.dbname,
+        app_config.default_user_backup_path,
+        outfunc,
+    )
     _setup_app_dirs(app_config)
     setup_db(app_config, output_func)
 

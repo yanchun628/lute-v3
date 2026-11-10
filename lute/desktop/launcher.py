@@ -25,6 +25,7 @@ import argparse
 import ctypes
 import logging
 import socket
+import subprocess
 import threading
 import time
 import traceback
@@ -39,6 +40,9 @@ DEFAULT_PORT = 5001
 ERROR_ALREADY_EXISTS = 183
 
 log = logging.getLogger("lute.desktop")
+
+# Set when the web UI asks for a restart (e.g. to finish a data import).
+RESTART_REQUESTED = threading.Event()
 
 
 # ----------------------------------------------------------------------
@@ -157,6 +161,12 @@ def acquire_single_instance():
     return handle
 
 
+def release_single_instance(handle):
+    "Release the mutex so a restarted instance can take it."
+    if os.name == "nt" and handle not in (None, True):
+        ctypes.windll.kernel32.CloseHandle(handle)
+
+
 def port_is_free(port):
     "True if nothing is listening on 127.0.0.1:port."
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -251,8 +261,10 @@ class LuteServer:
         from waitress.server import create_server
         from lute.app_factory import create_app, data_initialization
         from lute.db import db
+        from lute.datatransfer.routes import RESTART_KEY
 
-        app = create_app(self.config_file, output_func=print)
+        extra = {RESTART_KEY: RESTART_REQUESTED.set}
+        app = create_app(self.config_file, extra_config=extra, output_func=print)
         with app.app_context():
             data_initialization(db.session, print)
 
@@ -312,6 +324,13 @@ def run_tray(server, datapath):
         pystray.MenuItem("Quit Lute", on_quit),
     )
     icon = pystray.Icon("Lute3", image, f"Lute (port {server.port})", menu)
+
+    def _stop_on_restart():
+        RESTART_REQUESTED.wait()
+        icon.visible = False
+        icon.stop()
+
+    threading.Thread(target=_stop_on_restart, daemon=True).start()
     icon.run()
 
 
@@ -361,8 +380,8 @@ def _wait_for_quit(args, server, datapath):
 
     if args.no_tray:
         print(f"Running at {server.url}, Ctrl-C to stop.")
-        while True:
-            time.sleep(1)
+        while not RESTART_REQUESTED.is_set():
+            time.sleep(0.5)
     else:
         run_tray(server, datapath)
 
@@ -374,7 +393,8 @@ def main(argv=None):
     datapath = data_dir(portable)
     os.makedirs(datapath, exist_ok=True)
 
-    if acquire_single_instance() is None:
+    mutex = acquire_single_instance()
+    if mutex is None:
         _show_running_instance(datapath)
         return 0
 
@@ -399,7 +419,32 @@ def main(argv=None):
             os.remove(port_file(datapath))
         except OSError:
             pass
+
+    if RESTART_REQUESTED.is_set():
+        release_single_instance(mutex)
+        _spawn_restart(args, server)
     return 0
+
+
+def _spawn_restart(args, server):
+    "Start a new copy of Lute on the same port (the open page reloads)."
+    if is_frozen():
+        cmd = [sys.executable]
+    else:
+        cmd = [sys.executable, "-m", "lute.desktop.launcher"]
+    port = server.port if server is not None else args.port
+    cmd += ["--port", str(port), "--no-browser"]
+    if args.portable:
+        cmd.append("--portable")
+    if args.no_tray:
+        cmd.append("--no-tray")
+    print(f"Restarting: {cmd}")
+    flags = 0
+    if os.name == "nt":
+        flags = subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
+    subprocess.Popen(  # pylint: disable=consider-using-with
+        cmd, cwd=app_dir(), creationflags=flags, close_fds=True
+    )
 
 
 if __name__ == "__main__":
