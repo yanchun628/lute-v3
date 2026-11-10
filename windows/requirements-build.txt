@@ -1,0 +1,10 @@
+# Extra packages needed to build the Windows desktop version.
+# Install with:  pip install -r windows\requirements-build.txt
+pyinstaller>=6.0
+pystray>=0.19
+pillow>=10.0
+cffi>=1.15
+# Japanese support: only the bundled libmecab.dll and the
+# ipadic dictionary files are used (natto-py does the binding).
+mecab-python3>=1.0.6
+ipadic>=1.0.0

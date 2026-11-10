@@ -8,6 +8,7 @@ from contextlib import closing
 
 from lute.config.app_config import AppConfig
 from lute.app_factory import create_app
+from lute.db import db
 
 
 def test_init_no_existing_database(testconfig):
@@ -40,3 +41,8 @@ def test_init_no_existing_database(testconfig):
     client = app.test_client()
     response = client.get("/")
     assert b"Lute" in response.data
+
+    # Release the db file (Windows can't delete it while open).
+    with app.app_context():
+        db.session.remove()
+        db.engine.dispose()

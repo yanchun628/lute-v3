@@ -1,0 +1,8 @@
+This file turns on Lute's portable mode.
+
+While this file sits next to Lute3.exe, all of your data (database,
+images, audio, backups) is stored in the "data" folder beside it,
+so you can move the whole Lute3 folder or carry it on a USB stick.
+
+Delete this file to store data in your Windows user profile instead
+(%LOCALAPPDATA%\Lute3\Lute3), the same place the installed version uses.

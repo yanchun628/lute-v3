@@ -1,0 +1,54 @@
+name: windows-desktop
+
+# Builds the Windows desktop version (portable zip + installer).
+# Run manually from the Actions tab, or push a tag like v3.10.3-win1
+# to also attach the files to a GitHub release.
+
+on:
+  workflow_dispatch:
+  push:
+    tags: [ "v*" ]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: true
+
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Install Inno Setup if missing
+      shell: pwsh
+      run: |
+        if (-not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) {
+          choco install innosetup -y --no-progress
+        }
+
+    - name: Build
+      shell: pwsh
+      run: |
+        python -m venv .venv
+        ./windows/build.ps1
+
+    - uses: actions/upload-artifact@v4
+      with:
+        name: lute3-windows
+        path: |
+          dist/*-portable.zip
+          dist/*-setup.exe
+
+    - name: Release
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: softprops/action-gh-release@v2
+      with:
+        files: |
+          dist/*-portable.zip
+          dist/*-setup.exe

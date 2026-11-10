@@ -2,6 +2,7 @@
 App config tests
 """
 
+import os
 import pytest
 import yaml
 
@@ -24,7 +25,8 @@ def test_valid_config(tmp_path):
 
     app_config = AppConfig(config_file)
     assert app_config.datapath == "data_path"
-    assert app_config.sqliteconnstring == "sqlite:///data_path/my_db"
+    expected = "sqlite:///" + os.path.join("data_path", "my_db")
+    assert app_config.sqliteconnstring == expected
     assert app_config.env == "dev"
 
 

@@ -2,6 +2,7 @@
 Common fixtures used by many tests.
 """
 
+import gc
 import os
 import yaml
 import pytest
@@ -67,11 +68,25 @@ def fixture_app():
     """
     config_file = AppConfig.default_config_filename()
     c = AppConfig(config_file)
+    _dispose_all_engines()
     if os.path.exists(c.dbfilename):
         os.unlink(c.dbfilename)
     extra_config = {"WTF_CSRF_ENABLED": False, "TESTING": True}
     app = create_app(config_file, extra_config=extra_config)
     yield app
+    _dispose_all_engines()
+
+
+def _dispose_all_engines():
+    """
+    Close pooled sqlite connections of every app created so far
+    (including apps created directly by tests), otherwise Windows
+    refuses to delete the db file.  No-op effect on linux/mac.
+    """
+    gc.collect()
+    for engines in list(getattr(db, "_app_engines", {}).values()):
+        for engine in engines.values():
+            engine.dispose()
 
 
 @pytest.fixture(name="app_context")

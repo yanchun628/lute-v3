@@ -50,7 +50,16 @@ def _revised_mecab_path(repo):
         return mp
 
     # See develop docs for notes on how to find the libmecab path!
-    candidates = [
+    candidates = []
+
+    # The Windows desktop build ships its own libmecab.dll, and sets
+    # this env var at startup.  The bundle may move (e.g. portable
+    # version copied to a new folder), so it's checked first.
+    bundled = os.environ.get("LUTE_BUNDLED_MECAB_PATH")
+    if bundled:
+        candidates.append(bundled)
+
+    candidates += [
         # linux/arm64
         "/lib/aarch64-linux-gnu/libmecab.so.2",
         # linux/amd64

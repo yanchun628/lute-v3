@@ -52,7 +52,7 @@ def given_empty_file():
 @when(parsers.parse("import with create {create}, update {update}"))
 def import_with_settings(create, update):
     fd, path = tempfile.mkstemp()
-    with os.fdopen(fd, "w") as tmp:
+    with os.fdopen(fd, "w", encoding="utf-8") as tmp:
         # do stuff with temp file
         tmp.write(content)
 
@@ -71,7 +71,7 @@ def import_with_settings(create, update):
 )
 def import_with_settings_and_newunks(create, update, newunknowns):
     fd, path = tempfile.mkstemp()
-    with os.fdopen(fd, "w") as tmp:
+    with os.fdopen(fd, "w", encoding="utf-8") as tmp:
         # do stuff with temp file
         tmp.write(content)
 
@@ -100,7 +100,7 @@ def succeed_with_status(created, updated, skipped):
 @then(parsers.parse("import should fail with message:\n{message}"))
 def fail_with_message(message):
     fd, path = tempfile.mkstemp()
-    with os.fdopen(fd, "w") as tmp:
+    with os.fdopen(fd, "w", encoding="utf-8") as tmp:
         # do stuff with temp file
         tmp.write(content)
     with pytest.raises(BadImportFileError, match=message):
