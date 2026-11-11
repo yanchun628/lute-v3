@@ -2,12 +2,37 @@
 Repositories.
 """
 
+import os
+from flask import current_app
 from sqlalchemy import text as sqltext, and_, func
 from lute.db import db
 from lute.models.setting import UserSetting, BackupSettings, SystemSetting
 from lute.models.language import Language
 from lute.models.term import Term, TermTag
 from lute.models.book import Book, BookTag
+
+
+def effective_backup_dir(stored_backup_dir):
+    """
+    The backup dir to actually use.
+
+    The stored setting is used unless the app config manages the backup
+    path, or the stored path doesn't exist on this machine (e.g. the
+    db is shared with Docker, which stores "/lute_backup").  In those
+    cases the config's default backup path is used.  The stored setting
+    is never changed here.
+    """
+    try:
+        ac = current_app.env_config
+    except (RuntimeError, AttributeError):
+        return stored_backup_dir
+    if ac.backup_path_managed:
+        return ac.default_user_backup_path
+    if stored_backup_dir and os.path.isdir(stored_backup_dir):
+        return stored_backup_dir
+    if os.path.isdir(ac.default_user_backup_path):
+        return ac.default_user_backup_path
+    return stored_backup_dir
 
 
 class SettingRepositoryBase:
@@ -98,7 +123,7 @@ class UserSettingRepository(SettingRepositoryBase):
         bs.backup_enabled = _bool(self.get_value("backup_enabled"))
         bs.backup_auto = _bool(self.get_value("backup_auto"))
         bs.backup_warn = _bool(self.get_value("backup_warn"))
-        bs.backup_dir = self.get_value("backup_dir")
+        bs.backup_dir = effective_backup_dir(self.get_value("backup_dir"))
         bs.backup_count = int(self.get_value("backup_count") or 5)
         bs.last_backup_datetime = self.get_last_backup_datetime()
         return bs

@@ -68,6 +68,13 @@ class AppConfig:  # pylint: disable=too-many-instance-attributes
             "BACKUP_PATH", os.path.join(self.datapath, "backups")
         )
 
+        # If true, the backup dir is always default_user_backup_path and
+        # the user's stored backup_dir setting is left untouched.  Used
+        # when the data folder is shared between machines (e.g. synced
+        # with OneDrive, or shared with Docker), as a stored path from one
+        # machine is usually invalid on another.
+        self.backup_path_managed = bool(config.get("MANAGED_BACKUP_PATH", False))
+
     def _get_appdata_dir(self):
         "Get user's appdata directory from platformdirs."
         dirs = PlatformDirs("Lute3", "Lute3")

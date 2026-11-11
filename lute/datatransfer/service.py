@@ -20,7 +20,8 @@ Importing replaces the current data, so it's done in two steps:
    <datapath>/import_pending/.  The running app is not touched.
 2. apply_pending_import(): called at startup *before* the database is
    opened.  Backs up the current data, swaps in the staged data, and
-   fixes settings that hold paths from the other machine.
+   leaves machine-specific settings (paths) alone, as they are
+   resolved at runtime.
 """
 
 import os
@@ -225,35 +226,7 @@ def stage_import(zip_path, datapath, dbname="lute.db", source_name=None):
         raise
 
 
-def _fix_paths_in_settings(dbfile, default_backup_dir):
-    """
-    Settings from another machine/container may hold paths that don't
-    exist here.  backup_dir is reset to this install's default.
-    (mecab_path is revised automatically at startup, see
-    lute.db.management._revised_mecab_path.)
-    """
-    with closing(sqlite3.connect(dbfile)) as conn:
-        row = conn.execute(
-            "select StValue from settings where StKey='backup_dir'"
-        ).fetchone()
-        current = row[0] if row else None
-        if current and os.path.isdir(current):
-            return
-        if row:
-            conn.execute(
-                "update settings set StValue=? where StKey='backup_dir'",
-                (default_backup_dir,),
-            )
-        else:
-            conn.execute(
-                "insert into settings (StKey, StKeyType, StValue) "
-                "values ('backup_dir', 'user', ?)",
-                (default_backup_dir,),
-            )
-        conn.commit()
-
-
-def _move_current_data_to(datapath, dbname, backup_dir):
+def move_current_data_to(datapath, dbname, backup_dir):
     "Move the current db and data subdirs into backup_dir."
     os.makedirs(backup_dir)
     moved = []
@@ -265,7 +238,7 @@ def _move_current_data_to(datapath, dbname, backup_dir):
     return moved
 
 
-def apply_pending_import(datapath, dbname, default_backup_dir, output_func=None):
+def apply_pending_import(datapath, dbname, output_func=None):
     """
     If an import is staged, swap it in.  Must be called before the db
     is opened.  Returns the before-import backup folder, or None if
@@ -285,7 +258,7 @@ def apply_pending_import(datapath, dbname, default_backup_dir, output_func=None)
     backup_dir = os.path.join(datapath, ".system_db_backups", f"before_import_{stamp}")
     outfunc(f"Importing data from {info.get('source')} ...")
 
-    moved = _move_current_data_to(datapath, dbname, backup_dir)
+    moved = move_current_data_to(datapath, dbname, backup_dir)
     try:
         for name in [dbname] + DATA_SUBDIRS:
             src = os.path.join(stage, name)
@@ -294,7 +267,10 @@ def apply_pending_import(datapath, dbname, default_backup_dir, output_func=None)
                 shutil.move(src, dest)
             elif name in DATA_SUBDIRS:
                 os.makedirs(dest, exist_ok=True)
-        _fix_paths_in_settings(os.path.join(datapath, dbname), default_backup_dir)
+        # Settings holding paths from another machine (backup_dir,
+        # mecab_path) are left alone: they're resolved at runtime, so
+        # the db can still be used by e.g. Docker afterwards.
+        check_lute_db(os.path.join(datapath, dbname))
     except Exception:
         # Roll back: remove partial import, restore the originals.
         for name in [dbname] + DATA_SUBDIRS:

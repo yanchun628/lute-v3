@@ -2,6 +2,7 @@
 Settings test.
 """
 
+import os
 from unittest.mock import patch
 import pytest
 from lute.db import db
@@ -66,14 +67,14 @@ def test_smoke_last_backup(us_repo):
     assert v == 42, "set _and_ saved"
 
 
-def test_get_backup_settings(us_repo):
+def test_get_backup_settings(us_repo, tmp_path):
     "Smoke test."
-    us_repo.set_value("backup_dir", "blah")
+    us_repo.set_value("backup_dir", str(tmp_path))
     us_repo.set_value("backup_count", 12)
     us_repo.set_value("backup_warn", 0)
     db.session.commit()
     b = us_repo.get_backup_settings()
-    assert b.backup_dir == "blah"
+    assert b.backup_dir == str(tmp_path)
     assert b.backup_auto is True  # initial defaults
     assert b.backup_warn is False  # set to 0 above
     assert b.backup_count == 12
@@ -153,3 +154,17 @@ def test_get_or_set_user_setting_unknown_key_throws(us_repo):
         us_repo.get_value("bad_key")
     with pytest.raises(MissingUserSettingKeyException):
         us_repo.set_value("bad_key", 17)
+
+
+def test_missing_backup_dir_falls_back_to_default(app, us_repo):
+    """
+    A stored backup_dir that doesn't exist here (e.g. Docker's
+    /lute_backup in a shared or imported db) uses the config default,
+    if that exists.  The stored value is not changed.
+    """
+    default = app.env_config.default_user_backup_path
+    os.makedirs(default, exist_ok=True)
+    us_repo.set_value("backup_dir", "/no/such/dir/lute_backup")
+    db.session.commit()
+    assert us_repo.get_backup_settings().backup_dir == default
+    assert us_repo.get_value("backup_dir") == "/no/such/dir/lute_backup"

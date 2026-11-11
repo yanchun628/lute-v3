@@ -107,6 +107,9 @@
           <li><a href="/settings/shortcuts">Keyboard shortcuts</a></li>
           <li><a id="anki_export_index" href="/ankiexport/index">Anki exports</a></li>
           <li><a id="datatransfer_index" href="/datatransfer/index">Import / Export data</a></li>
+          {% if is_desktop %}
+          <li><a id="desktop_datafolder" href="/desktop/datafolder">Data folder (sync)</a></li>
+          {% endif %}
         </ul>
       </div>
       {% if backup_enabled and backup_directory != '' %}

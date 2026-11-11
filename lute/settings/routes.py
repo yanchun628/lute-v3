@@ -36,17 +36,23 @@ def edit_settings():
         form.current_theme.choices = svc.list_themes()
 
     ac = current_app.env_config
-    if ac.is_docker:
+    if ac.is_docker or ac.backup_path_managed:
         # User shouldn't change some things with docker.
         kw = {"readonly": True, "style": "background-color: LightGray"}
-        # Backup dir gets mounted from host.
+        # Backup dir gets mounted from host, or is managed by the
+        # desktop launcher for a shared data folder.
         form.backup_dir.render_kw = kw
+
+    skip_fields = ["csrf_token", "submit"]
+    if ac.backup_path_managed:
+        # The stored value may be another machine's path; keep it as is.
+        skip_fields.append("backup_dir")
 
     repo = UserSettingRepository(db.session)
     if form.validate_on_submit():
         # Update the settings in the database
         for field in form:
-            if field.id not in ("csrf_token", "submit"):
+            if field.id not in skip_fields:
                 repo.set_value(field.id, field.data)
         db.session.commit()
         refresh_global_settings(db.session)
@@ -61,6 +67,9 @@ def edit_settings():
         if isinstance(field, BooleanField):
             # Hack: set boolean settings to ints, otherwise they're always checked.
             field.data = int(field.data or 0)
+    # Show the backup dir actually used (the stored one may be another
+    # machine's path, e.g. Docker's /lute_backup in an imported db).
+    form.backup_dir.data = repo.get_backup_settings().backup_dir
 
     return render_template("settings/form.html", form=form)
 

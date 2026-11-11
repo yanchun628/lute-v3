@@ -32,6 +32,23 @@ with two copies running.
 
 Uninstalling never deletes your data.
 
+**Syncing across computers (OneDrive)**: use *Settings > Data folder (sync)*
+to keep Lute's data in a OneDrive folder, and choose the same folder on
+each computer. A Docker folder works as-is: pick the folder holding
+`docker-compose.yml` and `data`, and Docker and Windows share the same data.
+
+* Lute lists Lute data it finds in OneDrive. Pick one, or paste a path.
+  You then see both data sets side by side and choose which to keep: use
+  the folder's data, or copy your current data into the folder (the
+  folder's old data is backed up first).
+* Backups go to the folder's `backups` folder. The stored backup setting
+  isn't changed, so Docker keeps working with the same database.
+* While Lute runs, a small "in use" file in the data folder records which
+  computer has it open. Another computer running the Windows version warns
+  before opening the same data. The Docker version doesn't check for it.
+* Only use Lute on one computer at a time. Quit Lute and let OneDrive
+  finish syncing before you switch computers.
+
 **Switching between Docker and Windows**: use *Settings > Import / Export data*.
 
 * **Docker to Windows**: zip your Docker folder (the one holding

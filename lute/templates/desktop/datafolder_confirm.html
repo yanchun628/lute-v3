@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+
+{% block title %}Data folder{% endblock %}
+
+{% block header %}Switch data folder{% endblock %}
+
+{% block body %}
+
+<p>New folder: <code>{{ folder }}</code></p>
+<p>
+  Data: <code>{{ target_datapath }}</code><br />
+  Backups: <code>{{ target_backuppath }}</code>
+</p>
+
+{% if other %}
+<div class="flash-notice" id="other_computer_warning">
+  <b>This data seems to be open on {{ other.computer }}</b> (last active about
+  {{ (other.age_seconds // 60) or 1 }} min ago).  Quit Lute there first.
+</div>
+{% endif %}
+
+<table class="table" id="compare_data" style="margin: 15px 0;">
+  <thead>
+    <tr><th></th><th>Current data</th><th>Data in the new folder</th></tr>
+  </thead>
+  <tbody>
+    {% for label, key in [('Languages', 'languages'), ('Books', 'books'), ('Terms', 'terms'), ('Last changed', 'modified')] %}
+    <tr>
+      <td>{{ label }}</td>
+      <td>{{ current[key] if current.has_db else '-' }}</td>
+      <td>{% if target.has_db and not target.error %}{{ target[key] }}{% elif loop.first %}{{ target.error or 'No Lute data yet' }}{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<p>Pick the data you want to keep.  Lute restarts afterwards.</p>
+
+{% if target.has_db and not target.error %}
+<form method="POST" action="{{ url_for('desktop.datafolder_apply') }}" style="margin-bottom: 10px;">
+  <input type="hidden" name="folder" value="{{ folder }}" />
+  <input type="hidden" name="mode" value="use" />
+  <input type="submit" id="btn_use_folder_data" value="Use the data in the new folder" />
+  &nbsp; Your current data stays where it is, untouched.
+</form>
+{% endif %}
+
+<form method="POST" action="{{ url_for('desktop.datafolder_apply') }}">
+  <input type="hidden" name="folder" value="{{ folder }}" />
+  <input type="hidden" name="mode" value="copy" />
+  <input type="submit" id="btn_copy_current_data" value="Copy my current data into the new folder"
+         {% if target.has_db %}onclick="return confirm('Replace the data in the new folder with your current data?  It is backed up first.');"{% endif %} />
+  {% if target.has_db %}
+  &nbsp; The data already there is moved to <code>.system_db_backups</code> first.
+  {% endif %}
+</form>
+
+<p style="margin-top: 20px;"><a href="{{ url_for('desktop.datafolder_index') }}">Cancel</a></p>
+
+{% endblock %}

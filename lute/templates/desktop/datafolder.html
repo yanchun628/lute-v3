@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+
+{% block title %}Data folder{% endblock %}
+
+{% block header %}Data folder{% endblock %}
+
+{% block body %}
+
+{% if info is none %}
+<p>Choosing the data folder is only available in the Windows desktop version of Lute.</p>
+{% else %}
+
+<p>
+  Lute can keep its data in any folder, for example a OneDrive folder.
+  Use the same folder on each of your computers, and with the Docker
+  version, to keep everything in sync automatically.
+</p>
+
+<h2>Current data</h2>
+<table class="table" id="current_datafolder" style="margin: 0 0 10px 0;">
+  <tr><td>Data folder</td><td><code>{{ info.datapath }}</code>
+    {% if info.chosen_folder %}(chosen){% else %}(this computer's local folder){% endif %}</td></tr>
+  {% if info.backuppath %}
+  <tr><td>Backups</td><td><code>{{ info.backuppath }}</code></td></tr>
+  {% endif %}
+  {% if current.has_db %}
+  <tr><td>Contents</td><td>{{ current.languages }} languages, {{ current.books }} books,
+    {{ current.terms }} terms (last changed {{ current.modified }})</td></tr>
+  {% endif %}
+</table>
+
+{% if current.conflicts %}
+<div class="flash-notice" id="conflict_warning">
+  <b>OneDrive conflict copies found:</b> {{ current.conflicts | join(', ') }}.
+  OneDrive made these when the data changed on two computers at once.
+  Lute uses <code>lute.db</code>; the copies may hold changes made on
+  {{ computer }}.  Check them before deleting.
+</div>
+{% endif %}
+
+{% if info.chosen_folder %}
+<form method="POST" action="{{ url_for('desktop.datafolder_reset') }}">
+  <input type="submit" id="btn_reset_folder" value="Use this computer's local folder again"
+         onclick="return confirm('Switch back to the local data on this computer?  Lute will restart.');" />
+</form>
+{% endif %}
+
+<h2>Use another folder</h2>
+
+{% if candidates %}
+<p>Lute data found in OneDrive (click to choose):</p>
+<ul id="folder_candidates" style="margin-left: 20px;">
+  {% for c in candidates %}
+  <li><a href="#" onclick="document.getElementById('folder').value = this.dataset.path; return false;"
+         data-path="{{ c }}">{{ c }}</a></li>
+  {% endfor %}
+</ul>
+{% endif %}
+
+<form method="POST" action="{{ url_for('desktop.datafolder_check') }}">
+  <p>
+    Folder (paste a path from Explorer; for a Docker folder, choose the
+    one holding <code>docker-compose.yml</code> and <code>data</code>):
+  </p>
+  <input type="text" name="folder" id="folder" style="width: 70%;"
+         placeholder="e.g. C:\Users\me\OneDrive\my_lute_docker" />
+  <input type="submit" id="btn_check_folder" value="Next" />
+</form>
+
+<h2>Tips for syncing</h2>
+<ul style="margin-left: 20px;">
+  <li>Only use Lute on one computer at a time.  Quit Lute (tray icon, Quit Lute) before switching.</li>
+  <li>Before opening Lute on another computer, wait until OneDrive shows the folder as synced.</li>
+  <li>In OneDrive, right-click the folder and choose "Always keep on this device".</li>
+  <li>The Windows version warns if another computer has the data open.  The Docker version doesn't, so take care when using both.</li>
+</ul>
+
+{% endif %}
+{% endblock %}

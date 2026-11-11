@@ -139,7 +139,7 @@ def _make_current_data(datapath, lute_db):
 
 
 def test_apply_pending_import(lute_db, tmp_path):
-    "Data is swapped, old data backed up, docker backup_dir fixed."
+    "Data is swapped, old data backed up, docker backup_dir kept."
     datapath = str(tmp_path / "datapath")
     _make_current_data(datapath, lute_db)
     _set_setting(lute_db, "current_theme", "IMPORTED")
@@ -147,12 +147,12 @@ def test_apply_pending_import(lute_db, tmp_path):
     z = _make_docker_zip(tmp_path / "docker.zip", lute_db)
     service.stage_import(z, datapath)
 
-    default_backups = str(tmp_path / "my_backups")
-    bkp = service.apply_pending_import(datapath, "lute.db", default_backups)
+    bkp = service.apply_pending_import(datapath, "lute.db")
 
     newdb = os.path.join(datapath, "lute.db")
     assert _get_setting(newdb, "current_theme") == "IMPORTED"
-    assert _get_setting(newdb, "backup_dir") == default_backups
+    # Left as-is, so the db still works with Docker (resolved at runtime).
+    assert _get_setting(newdb, "backup_dir") == "/lute_backup"
     assert os.path.exists(os.path.join(datapath, "userimages", "1", "apple.jpeg"))
     assert not os.path.exists(os.path.join(datapath, "userimages", "old.txt"))
     for d in service.DATA_SUBDIRS:
@@ -164,20 +164,9 @@ def test_apply_pending_import(lute_db, tmp_path):
     assert service.pending_import_info(datapath) is None
 
 
-def test_apply_keeps_existing_backup_dir(lute_db, tmp_path):
-    "A backup_dir that exists on this machine is left alone."
-    datapath = str(tmp_path / "datapath")
-    keep = str(tmp_path / "keepme")
-    os.makedirs(keep)
-    _set_setting(lute_db, "backup_dir", keep)
-    service.stage_import(_make_docker_zip(tmp_path / "d.zip", lute_db), datapath)
-    service.apply_pending_import(datapath, "lute.db", "unused")
-    assert _get_setting(os.path.join(datapath, "lute.db"), "backup_dir") == keep
-
-
 def test_apply_without_pending_does_nothing(tmp_path):
     "No staged import, no change."
-    assert service.apply_pending_import(str(tmp_path), "lute.db", "x") is None
+    assert service.apply_pending_import(str(tmp_path), "lute.db") is None
 
 
 def test_failed_apply_restores_current_data(lute_db, tmp_path, monkeypatch):
@@ -189,9 +178,9 @@ def test_failed_apply_restores_current_data(lute_db, tmp_path, monkeypatch):
     def _boom(*args):
         raise RuntimeError("boom")
 
-    monkeypatch.setattr(service, "_fix_paths_in_settings", _boom)
+    monkeypatch.setattr(service, "check_lute_db", _boom)
     with pytest.raises(RuntimeError):
-        service.apply_pending_import(datapath, "lute.db", "x")
+        service.apply_pending_import(datapath, "lute.db")
 
     restored = os.path.join(datapath, "lute.db")
     assert _get_setting(restored, "current_theme") == "CURRENT"
